@@ -215,6 +215,9 @@ def validate_session():
         st.session_state.gen_model = load_gen_model()
     return True
 
+# ===============================
+# Core Logic (Fixed Version)
+# ===============================
 def display_results(query: str, answer: str, context: str):
     st.subheader("Answer")
     st.markdown(f"**{answer}**")
@@ -223,8 +226,10 @@ def display_results(query: str, answer: str, context: str):
         st.markdown(context)
     
     with st.expander("Technical details"):
+        # Define newline character separately
+        nl = '\n'
         st.markdown(f"""
-        - Retrieved context passages: {len(context.split('\n\n'))}
+        - Retrieved context passages: {len(context.split(nl + nl))}
         - Answer length: {len(answer.split())} words
         - Context relevance score: {calculate_relevance(query, context):.2f}/1.0
         """)
