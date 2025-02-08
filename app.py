@@ -264,8 +264,58 @@ def reset_session():
         del st.session_state[key]
     st.experimental_rerun()
 
+# ========================
+# Session State Initialization (Updated)
+# ========================
+def initialize_session_state():
+    required_keys = {
+        "embedding_model": None,
+        "gen_model": None,
+        "faiss_index": None,
+        "chunk_texts": [],
+        "uploaded_files": [],
+        "feedback_log": [],
+        "top_k": DEFAULT_TOP_K
+    }
+    
+    for key, value in required_keys.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+# Initialize at the very beginning
+initialize_session_state()
+
 # ===============================
-# Document Processing
+# Caching Model Loading (Updated)
+# ===============================
+@st.cache_resource(show_spinner="Loading embedding model...")
+def load_embedding_model():
+    try:
+        model = SentenceTransformer(DEFAULT_EMBEDDING_MODEL)
+        st.success("Embedding model loaded!")
+        return model
+    except Exception as e:
+        st.error(f"Failed to load embedding model: {str(e)}")
+        raise
+
+@st.cache_resource(show_spinner="Loading generation model...")
+def load_gen_model():
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(DEFAULT_GENERATOR_MODEL)
+        model = AutoModelForSeq2SeqLM.from_pretrained(DEFAULT_GENERATOR_MODEL)
+        gen_pipeline = pipeline(
+            "text2text-generation",
+            model=model,
+            tokenizer=tokenizer
+        )
+        st.success("Generation model loaded!")
+        return gen_pipeline
+    except Exception as e:
+        st.error(f"Failed to load generation model: {str(e)}")
+        raise
+
+# ===============================
+# Updated Document Processing
 # ===============================
 def process_uploaded_files(files):
     if not files:
@@ -283,22 +333,33 @@ def process_uploaded_files(files):
         combined_text = "\n\n".join(all_text)
         st.session_state.chunk_texts = semantic_chunking(combined_text)
         
+        # Load embedding model if not loaded
         if not st.session_state.embedding_model:
-            st.session_state.embedding_model = load_embedding_model()
-            
-        st.session_state.faiss_index = build_faiss_index(
-            st.session_state.chunk_texts,
-            st.session_state.embedding_model
-        )
+            with st.spinner("Loading embedding model for first time..."):
+                st.session_state.embedding_model = load_embedding_model()
+        
+        # Build FAISS index with progress
+        with st.spinner("Building document index..."):
+            st.session_state.faiss_index = build_faiss_index(
+                st.session_state.chunk_texts,
+                st.session_state.embedding_model
+            )
         
         st.sidebar.success(f"Processed {len(files)} files with {len(st.session_state.chunk_texts)} chunks")
         return True
     return False
 
 # ===============================
-# Main Execution
+# Main Execution (Updated)
 # ===============================
 if __name__ == "__main__":
+    # Initialize models early
+    if st.session_state.embedding_model is None:
+        st.session_state.embedding_model = load_embedding_model()
+    
+    if st.session_state.gen_model is None:
+        st.session_state.gen_model = load_gen_model()
+    
     controls = sidebar_controls()
     st.session_state.top_k = controls["top_k"]
     
