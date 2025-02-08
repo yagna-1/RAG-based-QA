@@ -22,8 +22,9 @@ DEFAULT_CHUNK_SIZE = 500
 DEFAULT_CHUNK_OVERLAP = 100
 
 DEFAULT_GENERATOR_MODEL = "EleutherAI/gpt-neo-125M"
-DEFAULT_GENERATOR_MAX_LENGTH = 256
-DEFAULT_GENERATOR_TEMPERATURE = 0.7
+# Increased max length to allow more detailed answers.
+DEFAULT_GENERATOR_MAX_LENGTH = 300  
+DEFAULT_GENERATOR_TEMPERATURE = 0.8  # Adjusted temperature for slightly more creativity
 
 # ========================
 # Session State Initialization
@@ -139,7 +140,14 @@ def retrieve_chunks(query, embedder, index, chunks, top_k: int):
 # Generation & Evaluation Functions
 # ===============================
 def generate_answer(query, context, gen_pipeline):
-    prompt = f"Given the following context:\n{context}\n\nAnswer the following question:\n{query}\n\nAnswer:"
+    # Modified prompt to instruct the model to generate a detailed answer.
+    prompt = (
+        f"Using the context provided below, give a detailed, complete answer in full sentences to the question. "
+        f"If there is insufficient information, say 'Insufficient information to provide an answer.'\n\n"
+        f"Context:\n{context}\n\n"
+        f"Question:\n{query}\n\n"
+        f"Detailed Answer:"
+    )
     generated = gen_pipeline(
         prompt,
         max_length=DEFAULT_GENERATOR_MAX_LENGTH,
